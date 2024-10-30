@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from dbs.database import IDatabase
 from exceptions.db_exception import MongoDBConnectionError
 from helpers.singleton import SingletonMeta
+from utilities.env_configuration import env_config
 
 
 class MongoDBMeta(IDatabase, SingletonMeta):
@@ -28,5 +29,7 @@ class MongoDB(metaclass=MongoDBMeta):
         return MongoDB.__call__()
 
 
-connection_string = 'mongodb://localhost:27017'
+host = env_config['db']['host']
+port = env_config['db']['port']
+connection_string = f'mongodb://{host}:{port}'
 mongodb = MongoDB(connection_string)
