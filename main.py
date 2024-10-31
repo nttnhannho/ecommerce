@@ -23,5 +23,10 @@ instance = MongoDB.get_instance()
 async def root():
     return {'database': id(instance)}
 
-if __name__ == '__main__':
+
+def main():
     uvicorn.run(app, host=host, port=port)
+
+
+if __name__ == '__main__':
+    main()
