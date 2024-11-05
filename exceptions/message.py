@@ -1,0 +1,7 @@
+DEFAULT_MONGODB_CONNECTION_EXCEPTION_MESSAGE = 'Error occurred while connecting to MongoDB'
+DEFAULT_MONGODB_DISCONNECTION_EXCEPTION_MESSAGE = 'Error occurred while disconnecting to MongoDB'
+DEFAULT_HASH_BCRYPT_EXCEPTION_MESSAGE = 'Error occurred while bcrypt-ing'
+DEFAULT_KEY_GENERATOR_GENERATE_RSA_KEYPAIR_EXCEPTION_MESSAGE = 'Error occurred while generating rsa keypair'
+DEFAULT_KEY_GENERATOR_CREATE_PUBLIC_KEYS_PEM_EXCEPTION_MESSAGE = 'Error occurred while creating public key pem'
+DEFAULT_AUTH_HANDLER_CREATE_TOKEN_PAIR_EXCEPTION_MESSAGE = 'Error occurred while creating auth token pair'
+DEFAULT_KEY_TOKEN_SERVICE_CREATE_KEY_TOKEN_EXCEPTION_MESSAGE = 'Error occurred while creating key token'

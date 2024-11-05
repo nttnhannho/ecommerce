@@ -1,28 +1,32 @@
+import os
+
 from pymongo import MongoClient
 
 from dbs.database import IDatabase
-from exceptions.db_exception import MongoDBConnectionError
-from helpers.singleton import SingletonMeta
-from utilities.env_configuration import env_config
+from exceptions.exception import MongoDBConnectionException, MongoDBDisconnectionException
+from utils.env_configuration import env_config
 
 
-class MongoDBMeta(IDatabase, SingletonMeta):
-    def connect(self):
-        ...
-
-
-class MongoDB(metaclass=MongoDBMeta):
+class MongoDB(IDatabase):
     def __init__(self, connection_str):
         self.__con_str = connection_str
         self.__client = None
         self.connect()
 
+    def __getitem__(self, item):
+        return self.__client[item]
+
     def connect(self):
         try:
-            with MongoClient(self.__con_str) as client:
-                self.__client = client
+            self.__client = MongoClient(self.__con_str)
         except Exception:
-            raise MongoDBConnectionError
+            raise MongoDBConnectionException
+
+    def disconnect(self):
+        try:
+            self.__client.close()
+        except Exception:
+            raise MongoDBDisconnectionException
 
     @staticmethod
     def get_instance():
@@ -31,5 +35,8 @@ class MongoDB(metaclass=MongoDBMeta):
 
 host = env_config['db']['host']
 port = env_config['db']['port']
+name = env_config['db']['name']
+test_db = 'test_db'
 connection_string = f'mongodb://{host}:{port}'
-mongodb = MongoDB(connection_string)
+client = MongoDB(connection_string)
+mongodb = client[name] if not bool(int(os.getenv('UNIT_TEST'))) else client['test_db']
