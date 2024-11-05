@@ -11,9 +11,5 @@ def main():
     uvicorn.run('app:app', host=host, port=port, reload=reload, workers=workers)
 
 
-def main():
-    uvicorn.run(app, host=host, port=port)
-
-
 if __name__ == '__main__':
     main()
