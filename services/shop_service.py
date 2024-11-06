@@ -32,14 +32,19 @@ class ShopService:
         new_shop = Shop(**shop_data)
 
         if new_shop:
-            private_key, public_key = await KeyGenerator.generate_rsa_keypair()
-            public_key_pem = await KeyGenerator.create_public_key_pem(public_key)
+            # For high level design
+            # private_key, public_key = await KeyGenerator.generate_rsa_keypair()
+            # public_key_pem = await KeyGenerator.create_public_key_pem(public_key)
 
-            key_token = await KeyTokenService.create_key_token(new_shop.id, public_key_pem)
-            if not key_token.public_key:
+            # For low level design
+            private_key = await KeyGenerator.generate_random_base64(64)
+            public_key = await KeyGenerator.generate_random_base64(64)
+
+            key_token = await KeyTokenService.create_key_token(new_shop.id, private_key, public_key)
+            if not key_token:
                 content = {
-                    'message': 'Public key is null',
-                    'code': 'PUBLIC_KEY_IS_NULL',
+                    'message': 'Key token is null',
+                    'code': 'KEY_TOKEN_IS_NULL',
                 }
                 return JSONResponse(content=content, status_code=status.HTTP_400_BAD_REQUEST)
 

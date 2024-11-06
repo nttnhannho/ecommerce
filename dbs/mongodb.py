@@ -1,10 +1,9 @@
-import os
-
 from pymongo import MongoClient
 
 from dbs.database import IDatabase
 from exceptions.exception import MongoDBConnectionException, MongoDBDisconnectionException
 from utils.env_configuration import env_config
+from utils.setting import IS_UNIT_TEST
 
 
 class MongoDB(IDatabase):
@@ -39,4 +38,4 @@ name = env_config['db']['name']
 test_db = 'test_db'
 connection_string = f'mongodb://{host}:{port}'
 client = MongoDB(connection_string)
-mongodb = client[name] if not bool(int(os.getenv('UNIT_TEST'))) else client['test_db']
+mongodb = client[name] if not IS_UNIT_TEST else client['test_db']

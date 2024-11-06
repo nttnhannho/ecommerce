@@ -10,33 +10,36 @@ from tests.test_setup import test_client
 @pytest.fixture
 def collection():
     collection = mongodb[Shop.__collection_name__]
-    collection.delete_many({})
 
     yield collection
 
     collection.delete_many({})
+    key_token_collection = mongodb[KeyToken.__collection_name__]
+    key_token_collection.delete_many({})
 
 
 def test_sign_up(collection):
     url = '/v1/api/shops/signup'
     data = {
-        'name': 'name',
-        'email': 'email@example.com',
+        'name': 'Shop A',
+        'email': 'test@example.com',
         'password': '123456',
     }
 
     response = test_client.post(url, json=data)
 
     assert response.status_code == status.HTTP_201_CREATED
-    shop = response.json()['metadata']['shop']
-    assert shop['_id']
-    assert shop['email'] == data['email']
+    metadata = response.json()['metadata']
+    assert metadata['shop']['_id']
+    assert metadata['shop']['email'] == data['email']
+    assert metadata['tokens']['access_token']
+    assert metadata['tokens']['refresh_token']
 
 
 def test_sign_up_with_request_is_missing_email(collection):
     url = '/v1/api/shops/signup'
     data = {
-        'name': 'name',
+        'name': 'Shop A',
         'password': '123456',
     }
 
@@ -47,15 +50,15 @@ def test_sign_up_with_request_is_missing_email(collection):
 
 def test_signup_with_existed_email_in_database(collection):
     collection.insert_one({
-        'name': 'name1',
-        'email': 'email@example.com',
+        'name': 'Shop A',
+        'email': 'test@example.com',
         'password': '123456',
     })
 
     url = '/v1/api/shops/signup'
     data = {
-        'name': 'name2',
-        'email': 'email@example.com',
+        'name': 'Shop B',
+        'email': 'test@example.com',
         'password': '123456',
     }
     error_code = 'EMAIL_IS_ALREADY_REGISTERED'
@@ -64,6 +67,3 @@ def test_signup_with_existed_email_in_database(collection):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()['code'] == error_code
-
-    collection = mongodb[KeyToken.__collection_name__]
-    collection.delete_many({})
