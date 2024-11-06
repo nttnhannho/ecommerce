@@ -9,9 +9,10 @@ class KeyToken(DatetimeBase):
     class Config:
         arbitrary_types_allowed = True
 
-    __collection_name__ = 'tokens'
+    __collection_name__ = 'key_tokens'
 
     id: PyObjectId = Field(default_factory=bson.ObjectId, alias='_id')
     shop_id: PyObjectId = Field(...)
+    private_key: str = Field(...)
     public_key: str = Field(...)
     refresh_token: list[str] = Field(default=[])
