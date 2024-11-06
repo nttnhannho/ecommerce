@@ -7,6 +7,7 @@ from exceptions.message import (
     DEFAULT_KEY_TOKEN_SERVICE_CREATE_KEY_TOKEN_EXCEPTION_MESSAGE,
     DEFAULT_AUTH_HANDLER_CREATE_TOKEN_PAIR_EXCEPTION_MESSAGE,
     DEFAULT_KEY_GENERATOR_CREATE_PUBLIC_KEYS_PEM_EXCEPTION_MESSAGE,
+    DEFAULT_KEY_GENERATOR_GENERATE_RANDOM_BASE64_EXCEPTION_MESSAGE,
 )
 
 
@@ -32,6 +33,11 @@ class KeyGeneratorGenerateRSAKeypairException(CustomException):
 
 class KeyGeneratorCreatePublicKeyPemException(CustomException):
     def __init__(self, message=DEFAULT_KEY_GENERATOR_CREATE_PUBLIC_KEYS_PEM_EXCEPTION_MESSAGE):
+        super().__init__(message)
+
+
+class KeyGeneratorGenerateRandomBase64Exception(CustomException):
+    def __init__(self, message=DEFAULT_KEY_GENERATOR_GENERATE_RANDOM_BASE64_EXCEPTION_MESSAGE):
         super().__init__(message)
 
 
