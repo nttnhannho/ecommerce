@@ -1,6 +1,14 @@
 import pytest
 from starlette import status
 
+from core.error_response import (
+    ForbiddenException,
+    StatusCode as ErrorStatusCode,
+    ReasonStatusCode as ErrorReasonStatusCode,
+    PermissionDeniedException,
+    BadRequestException,
+)
+from core.success_response import StatusCode as SuccessStatusCode, ReasonStatusCode as SuccessReasonStatusCode
 from dbs.mongodb import mongodb
 from models.api_key import ApiKey
 from models.key_token_model import KeyToken
@@ -37,12 +45,14 @@ def test_sign_up(collection):
 
     response = test_client.post(url, headers=headers, json=data)
 
-    assert response.status_code == status.HTTP_201_CREATED
-    metadata = response.json()['metadata']
-    assert metadata['shop']['_id']
-    assert metadata['shop']['email'] == data['email']
-    assert metadata['tokens']['access_token']
-    assert metadata['tokens']['refresh_token']
+    assert response.status_code == SuccessStatusCode.CREATED.value
+    content = response.json()
+    assert content['metadata']['_id']
+    assert content['metadata']['email'] == data['email']
+    assert content['tokens']['access_token']
+    assert content['tokens']['refresh_token']
+    assert content['reason_status_code'] == SuccessReasonStatusCode.CREATED.value
+    assert content['options']['limit'] == 10
 
 
 def test_sign_up_with_missing_x_api_key_in_header(collection):
@@ -55,11 +65,11 @@ def test_sign_up_with_missing_x_api_key_in_header(collection):
     }
     headers = {'Content-Type': 'application/json'}
 
-    response = test_client.post(url, headers=headers, json=data)
+    with pytest.raises(ForbiddenException) as exc:
+        test_client.post(url, headers=headers, json=data)
 
-    error_code = 'FORBIDDEN_ERROR'
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert response.json()['code'] == error_code
+    assert exc.value.status_code == ErrorStatusCode.FORBIDDEN.value
+    assert exc.value.reason_status_code == ErrorReasonStatusCode.FORBIDDEN.value
 
 
 def test_sign_up_with_incorrect_permission(collection):
@@ -78,11 +88,11 @@ def test_sign_up_with_incorrect_permission(collection):
     }
     headers = {'X-API-Key': 'fake_key'}
 
-    response = test_client.post(url, headers=headers, json=data)
+    with pytest.raises(PermissionDeniedException) as exc:
+        test_client.post(url, headers=headers, json=data)
 
-    error_code = 'PERMISSION_DENIED'
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert response.json()['code'] == error_code
+    assert exc.value.status_code == ErrorStatusCode.PERMISSION_DENIED.value
+    assert exc.value.reason_status_code == ErrorReasonStatusCode.PERMISSION_DENIED.value
 
 
 def test_sign_up_with_request_is_missing_email(collection):
@@ -113,8 +123,8 @@ def test_signup_with_existed_email_in_database(collection):
     }
     headers = {'X-API-Key': 'fake_key'}
 
-    response = test_client.post(url, headers=headers, json=data)
+    with pytest.raises(BadRequestException) as exc:
+        test_client.post(url, headers=headers, json=data)
 
-    error_code = 'EMAIL_IS_ALREADY_REGISTERED'
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()['detail'] == error_code
+    assert exc.value.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert exc.value.reason_status_code == ErrorReasonStatusCode.BAD_REQUEST.value
