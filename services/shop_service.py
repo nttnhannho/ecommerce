@@ -1,4 +1,5 @@
 from starlette import status
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from auth.auth_handler import AuthHandler
@@ -20,11 +21,7 @@ class ShopService:
         existed_shop = collection.find_one({'email': request['email']})
 
         if existed_shop:
-            content = {
-                'message': 'Email is already registered',
-                'code': 'EMAIL_IS_ALREADY_REGISTERED',
-            }
-            return JSONResponse(content=content, status_code=status.HTTP_400_BAD_REQUEST)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='EMAIL_IS_ALREADY_REGISTERED')
 
         hashed_password = await Hash.bcrypt(request['password'])
         roles = [ShopRole.SHOP]
@@ -42,11 +39,7 @@ class ShopService:
 
             key_token = await KeyTokenService.create_key_token(new_shop.id, private_key, public_key)
             if not key_token:
-                content = {
-                    'message': 'Key token is null',
-                    'code': 'KEY_TOKEN_IS_NULL',
-                }
-                return JSONResponse(content=content, status_code=status.HTTP_400_BAD_REQUEST)
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='TOKEN_ERROR')
 
             payload = {
                 'id': str(new_shop.id),
@@ -73,8 +66,4 @@ class ShopService:
             }
             return JSONResponse(content=content, status_code=status.HTTP_201_CREATED)
 
-        content = {
-            'message': 'Unable to create new shop',
-            'code': 'UNABLE_TO_CREATE_NEW_SHOP',
-        }
-        return JSONResponse(content=content, status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='UNABLE_TO_CREATE_NEW_SHOP')

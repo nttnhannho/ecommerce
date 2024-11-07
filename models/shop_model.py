@@ -27,7 +27,7 @@ class Shop(DatetimeBase):
 
     id: PyObjectId = Field(default_factory=bson.ObjectId, alias='_id')
     name: str = Field(..., max_length=150)
-    email: EmailStr = Field(..., unique=True)
+    email: EmailStr = Field(...)
     password: str = Field(...)
     status: ShopStatus = Field(default=ShopStatus.INACTIVE)
     verified: bool = Field(default=False)
