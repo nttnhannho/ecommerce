@@ -1,4 +1,4 @@
-class ResponseHandler:
+class ResponseDataHandler:
     @staticmethod
     async def response_data(obj: dict, fields: tuple):
         data = {}

@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from dbs.database import IDatabase
 from exceptions.exception import MongoDBConnectionException, MongoDBDisconnectionException
 from utils.env_configuration import env_config
-from utils.setting import IS_UNIT_TEST
+from setting import IS_UNIT_TEST
 
 
 class MongoDB(IDatabase):
