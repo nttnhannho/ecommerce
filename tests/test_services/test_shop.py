@@ -47,12 +47,22 @@ def test_sign_up(collection):
 
     assert response.status_code == SuccessStatusCode.CREATED.value
     content = response.json()
-    assert content['metadata']['_id']
+    shop_id = content['metadata']['_id']
+    assert shop_id
     assert content['metadata']['email'] == data['email']
     assert content['tokens']['access_token']
     assert content['tokens']['refresh_token']
     assert content['reason_status_code'] == SuccessReasonStatusCode.CREATED.value
     assert content['options']['limit'] == 10
+
+    key_token = mongodb[KeyToken.__collection_name__]
+    key_token_obj = key_token.find_one({'shop_id': shop_id})
+    assert key_token_obj['private_key']
+    assert key_token_obj['public_key']
+
+    api_key = mongodb[ApiKey.__collection_name__]
+    count = api_key.count_documents({})
+    assert count == 2
 
 
 def test_sign_up_with_missing_x_api_key_in_header(collection):

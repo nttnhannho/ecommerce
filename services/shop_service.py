@@ -6,8 +6,10 @@ from exceptions.custom import CustomInternalServerErrors
 from helpers.hashing import Hash
 from helpers.key_generator import KeyGenerator
 from helpers.response_data_handler import ResponseDataHandler
+from models.api_key import ApiKey, PermissionCode
 from models.key_token_model import KeyToken
 from models.shop_model import Shop, ShopRole
+from services.api_key_service import ApiKeyService
 from services.key_token_service import KeyTokenService
 
 
@@ -33,8 +35,8 @@ class ShopService:
                 # public_key_pem = await KeyGenerator.create_public_key_pem(public_key)
 
                 # For low level design
-                private_key = await KeyGenerator.generate_random_base64(64)
-                public_key = await KeyGenerator.generate_random_base64(64)
+                private_key = await KeyGenerator.generate_random_base64(length=64)
+                public_key = await KeyGenerator.generate_random_base64(length=64)
 
                 key_token = await KeyTokenService.create_key_token(new_shop.id, private_key, public_key)
                 if not key_token:
@@ -46,12 +48,23 @@ class ShopService:
                 }
                 access_token, refresh_token = await AuthHandler.create_token_pair(payload=payload, public_key=public_key, private_key=private_key)
 
+                key = await KeyGenerator.generate_random_base64(length=64)
+                permission = [PermissionCode.P0000.value]
+                api_key = await ApiKeyService.create_api_key(key, permission)
+
+                # Insert shop to DB
                 new_shop_dict = new_shop.model_dump(by_alias=True)
                 collection.insert_one(new_shop_dict)
 
+                # Insert Key tokens to DB
                 key_token_dict = key_token.model_dump(by_alias=True)
                 collection = mongodb[KeyToken.__collection_name__]
                 collection.insert_one(key_token_dict)
+
+                # Insert API key to DB
+                api_key_dict = api_key.model_dump(by_alias=True)
+                collection = mongodb[ApiKey.__collection_name__]
+                collection.insert_one(api_key_dict)
 
                 content = {
                     'message': 'Created new shop',
