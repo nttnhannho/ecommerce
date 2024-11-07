@@ -30,7 +30,8 @@ async def check_permission(request: Request, call_next, permission='0000'):
 async def check_api_key(request: Request, call_next):
     api_key = request.headers.get('X-API-Key')
     api_key_obj = ApiKeyService.find_by_key(key=api_key)
-    if not (api_key and api_key_obj):
+    is_api_key_existed = not (api_key and api_key_obj)
+    if is_api_key_existed:
         raise ForbiddenException(message='Missing API key')
 
     request.state.api_key_obj = api_key_obj

@@ -8,11 +8,17 @@ from exceptions.message import (
     DEFAULT_AUTH_HANDLER_CREATE_TOKEN_PAIR_EXCEPTION_MESSAGE,
     DEFAULT_KEY_GENERATOR_CREATE_PUBLIC_KEYS_PEM_EXCEPTION_MESSAGE,
     DEFAULT_KEY_GENERATOR_GENERATE_RANDOM_BASE64_EXCEPTION_MESSAGE,
+    DEFAULT_API_KEY_SERVICE_CREATE_API_KEY_EXCEPTION_MESSAGE,
 )
 
 
 class MongoDBConnectionException(CustomException):
     def __init__(self, message=DEFAULT_MONGODB_CONNECTION_EXCEPTION_MESSAGE):
+        super().__init__(message)
+
+
+class ApiKeyServiceCreateApiKeyException(CustomException):
+    def __init__(self, message=DEFAULT_API_KEY_SERVICE_CREATE_API_KEY_EXCEPTION_MESSAGE):
         super().__init__(message)
 
 
