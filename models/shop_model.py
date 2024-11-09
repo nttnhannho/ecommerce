@@ -3,6 +3,7 @@ from enum import Enum
 import bson
 from pydantic import EmailStr, Field, field_validator
 
+from helpers.field_validator import strip
 from models.datetime_base import DatetimeBase
 from models.py_object_id import PyObjectId
 
@@ -35,8 +36,19 @@ class Shop(DatetimeBase):
 
     @field_validator('name')
     def strip_name(cls, name):
-        return name.strip()
+        return strip(name)
 
     @field_validator('email')
     def strip_email(cls, email):
-        return email.strip()
+        return strip(email)
+
+
+class ShopLogin(DatetimeBase):
+    __collection_name__ = 'shops'
+
+    email: EmailStr = Field(...)
+    password: str = Field(...)
+
+    @field_validator('email')
+    def strip_email(cls, email):
+        return strip(email)
