@@ -5,10 +5,12 @@ from starlette.responses import JSONResponse
 
 class StatusCode(Enum):
     CREATED = 201
+    SUCCESS = 200
 
 
 class ReasonStatusCode(str, Enum):
     CREATED = 'CREATED'
+    SUCCESS = 'SUCCESS'
 
 
 class CustomSuccessResponse(JSONResponse):
@@ -17,5 +19,10 @@ class CustomSuccessResponse(JSONResponse):
 
 
 class CreatedResponse(CustomSuccessResponse):
-    def __init__(self, content: dict, status_code=StatusCode.CREATED.value):
+    def __init__(self, content, status_code=StatusCode.CREATED.value):
+        super().__init__(content, status_code)
+
+
+class SuccessResponse(CustomSuccessResponse):
+    def __init__(self, content, status_code=StatusCode.SUCCESS.value):
         super().__init__(content, status_code)

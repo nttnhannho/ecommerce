@@ -2,13 +2,15 @@ from exceptions.custom import CustomException
 from exceptions.message import (
     DEFAULT_MONGODB_CONNECTION_EXCEPTION_MESSAGE,
     DEFAULT_MONGODB_DISCONNECTION_EXCEPTION_MESSAGE,
-    DEFAULT_HASH_BCRYPT_EXCEPTION_MESSAGE,
+    DEFAULT_HASH_PASSWORD_EXCEPTION_MESSAGE,
     DEFAULT_KEY_GENERATOR_GENERATE_RSA_KEYPAIR_EXCEPTION_MESSAGE,
     DEFAULT_KEY_TOKEN_SERVICE_CREATE_KEY_TOKEN_EXCEPTION_MESSAGE,
     DEFAULT_AUTH_HANDLER_CREATE_TOKEN_PAIR_EXCEPTION_MESSAGE,
     DEFAULT_KEY_GENERATOR_CREATE_PUBLIC_KEYS_PEM_EXCEPTION_MESSAGE,
     DEFAULT_KEY_GENERATOR_GENERATE_RANDOM_BASE64_EXCEPTION_MESSAGE,
     DEFAULT_API_KEY_SERVICE_CREATE_API_KEY_EXCEPTION_MESSAGE,
+    DEFAULT_HASH_CHECK_MATCHED_EXCEPTION_MESSAGE,
+    DEFAULT_UNIT_TEST_INAPPLICABLE_SETTING_EXCEPTION_MESSAGE,
 )
 
 
@@ -27,8 +29,13 @@ class MongoDBDisconnectionException(CustomException):
         super().__init__(message)
 
 
-class HashBcryptException(CustomException):
-    def __init__(self, message=DEFAULT_HASH_BCRYPT_EXCEPTION_MESSAGE):
+class HashPasswordException(CustomException):
+    def __init__(self, message=DEFAULT_HASH_PASSWORD_EXCEPTION_MESSAGE):
+        super().__init__(message)
+
+
+class HashCheckMatchedException(CustomException):
+    def __init__(self, message=DEFAULT_HASH_CHECK_MATCHED_EXCEPTION_MESSAGE):
         super().__init__(message)
 
 
@@ -54,4 +61,9 @@ class AuthHandlerCreateTokenPairException(CustomException):
 
 class KeyTokenServiceCreateKeyTokenException(CustomException):
     def __init__(self, message=DEFAULT_KEY_TOKEN_SERVICE_CREATE_KEY_TOKEN_EXCEPTION_MESSAGE):
+        super().__init__(message)
+
+
+class UnitTestInapplicableSetting(CustomException):
+    def __init__(self, message=DEFAULT_UNIT_TEST_INAPPLICABLE_SETTING_EXCEPTION_MESSAGE):
         super().__init__(message)

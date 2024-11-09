@@ -1,10 +1,17 @@
 from fastapi import FastAPI
+from starlette.exceptions import HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
-from core.error_response import PermissionDeniedException, ForbiddenException
+from core.error_response import (
+    BadRequestException,
+    ForbiddenException,
+    PermissionDeniedException, ReasonStatusCode,
+)
 from routers.router import router
 from services.api_key_service import ApiKeyService
 from setting import IS_UNIT_TEST
@@ -20,7 +27,7 @@ app = FastAPI()
 async def check_permission(request: Request, call_next, permission='0000'):
     api_key_obj = request.state.api_key_obj
     if permission not in api_key_obj['permission']:
-        raise PermissionDeniedException(message='Permission denied')
+        raise PermissionDeniedException(detail=ReasonStatusCode.PERMISSION_DENIED.value)
 
     response = await call_next(request)
     return response
@@ -29,18 +36,38 @@ async def check_permission(request: Request, call_next, permission='0000'):
 @app.middleware('http')
 async def check_api_key(request: Request, call_next):
     api_key = request.headers.get('X-API-Key')
-    api_key_obj = ApiKeyService.find_by_key(key=api_key)
-    is_api_key_existed = not (api_key and api_key_obj)
-    if is_api_key_existed:
-        raise ForbiddenException(message='Missing API key')
+    if not api_key:
+        raise BadRequestException(detail=ReasonStatusCode.API_KEY_ERROR.value)
+
+    api_key_obj = await ApiKeyService.find_by_key(key=api_key)
+    if not api_key_obj:
+        raise ForbiddenException(detail=ReasonStatusCode.FORBIDDEN.value)
 
     request.state.api_key_obj = api_key_obj
+
     response = await call_next(request)
     return response
+
+
+@app.exception_handler(HTTPException)
+async def handle_exception(request, exc):
+    response = JSONResponse(status_code=exc.status_code, content={'reason_status_code': exc.detail})
+    return response
+
+
+class MiddlewareExceptionHandler(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            response = await call_next(request)
+        except HTTPException as exc:
+            return await handle_exception(request, exc)
+
+        return response
 
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=origins)
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 app.add_middleware(GZipMiddleware, minimum_size=minimum_size_in_byte, compresslevel=compression_level)
+app.add_middleware(MiddlewareExceptionHandler)
 
 app.include_router(router)

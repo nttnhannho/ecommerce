@@ -15,4 +15,5 @@ class KeyToken(DatetimeBase):
     shop_id: PyObjectId = Field(...)
     private_key: str = Field(...)
     public_key: str = Field(...)
-    refresh_token: list[str] = Field(default=[])
+    refresh_token: str = Field(...)
+    refresh_token_used: list[str] = Field(default=[])

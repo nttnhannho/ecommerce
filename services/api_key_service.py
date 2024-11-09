@@ -14,8 +14,8 @@ class ApiKeyService:
         return api_key
 
     @staticmethod
-    def find_by_key(key):
+    async def find_by_key(key):
         collection = mongodb[ApiKey.__collection_name__]
-        key_obj = collection.find_one({'key': key})
+        api_key_obj = collection.find_one({'key': key})
 
-        return key_obj
+        return api_key_obj
