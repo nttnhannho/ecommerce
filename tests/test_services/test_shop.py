@@ -1,15 +1,16 @@
+import asyncio
+
 import pytest
+from bson import ObjectId
 from starlette import status
 
 from core.error_response import (
-    ForbiddenException,
     StatusCode as ErrorStatusCode,
     ReasonStatusCode as ErrorReasonStatusCode,
-    PermissionDeniedException,
-    BadRequestException,
 )
 from core.success_response import StatusCode as SuccessStatusCode, ReasonStatusCode as SuccessReasonStatusCode
 from dbs.mongodb import mongodb
+from helpers.hashing import Hash
 from models.api_key import ApiKey
 from models.key_token_model import KeyToken
 from models.shop_model import Shop
@@ -44,9 +45,9 @@ def test_sign_up(collection):
     headers = {'X-API-Key': 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
 
     assert response.status_code == SuccessStatusCode.CREATED.value
-    content = response.json()
     shop_id = content['metadata']['_id']
     assert shop_id
     assert content['metadata']['email'] == data['email']
@@ -56,7 +57,7 @@ def test_sign_up(collection):
     assert content['options']['limit'] == 10
 
     key_token = mongodb[KeyToken.__collection_name__]
-    key_token_obj = key_token.find_one({'shop_id': shop_id})
+    key_token_obj = key_token.find_one({'shop_id': ObjectId(shop_id)})
     assert key_token_obj['private_key']
     assert key_token_obj['public_key']
 
@@ -65,7 +66,7 @@ def test_sign_up(collection):
     assert count == 2
 
 
-def test_sign_up_with_missing_x_api_key_in_header(collection):
+def test_sign_up_with_missing_api_key_in_header(collection):
     url = '/v1/api/shops/signup'
     data = {
         'name': 'Shop A',
@@ -75,11 +76,28 @@ def test_sign_up_with_missing_x_api_key_in_header(collection):
     }
     headers = {'Content-Type': 'application/json'}
 
-    with pytest.raises(ForbiddenException) as exc:
-        test_client.post(url, headers=headers, json=data)
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
 
-    assert exc.value.status_code == ErrorStatusCode.FORBIDDEN.value
-    assert exc.value.reason_status_code == ErrorReasonStatusCode.FORBIDDEN.value
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.API_KEY_ERROR.value
+
+
+def test_sign_up_with_incorrect_api_key(collection):
+    url = '/v1/api/shops/signup'
+    data = {
+        'name': 'Shop A',
+        'email': 'test@example.com',
+        'password': '123456',
+        'roles': ['SHOP'],
+    }
+    headers = {'X-API-Key': 'incorrect_api_key'}
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.FORBIDDEN.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.FORBIDDEN.value
 
 
 def test_sign_up_with_incorrect_permission(collection):
@@ -98,11 +116,11 @@ def test_sign_up_with_incorrect_permission(collection):
     }
     headers = {'X-API-Key': 'fake_key'}
 
-    with pytest.raises(PermissionDeniedException) as exc:
-        test_client.post(url, headers=headers, json=data)
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
 
-    assert exc.value.status_code == ErrorStatusCode.PERMISSION_DENIED.value
-    assert exc.value.reason_status_code == ErrorReasonStatusCode.PERMISSION_DENIED.value
+    assert response.status_code == ErrorStatusCode.PERMISSION_DENIED.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.PERMISSION_DENIED.value
 
 
 def test_sign_up_with_request_is_missing_email(collection):
@@ -133,8 +151,74 @@ def test_signup_with_existed_email_in_database(collection):
     }
     headers = {'X-API-Key': 'fake_key'}
 
-    with pytest.raises(BadRequestException) as exc:
-        test_client.post(url, headers=headers, json=data)
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
 
-    assert exc.value.status_code == ErrorStatusCode.BAD_REQUEST.value
-    assert exc.value.reason_status_code == ErrorReasonStatusCode.BAD_REQUEST.value
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.EMAIL_ERROR.value
+
+
+@pytest.mark.asyncio
+def test_login(collection):
+    password = '123456'
+    hashed_password = asyncio.run(Hash.hash_password(password)).decode('utf-8')
+    collection.insert_one({
+        'name': 'created shop',
+        'email': 'created_shop@example.com',
+        'password': hashed_password,
+    })
+
+    url = '/v1/api/shops/login'
+    data = {
+        'email': 'created_shop@example.com',
+        'password': '123456'
+    }
+    headers = {'X-API-Key': 'fake_key'}
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == SuccessStatusCode.SUCCESS.value
+    assert content['reason_status_code'] == SuccessReasonStatusCode.SUCCESS.value
+    assert content['metadata']['email'] == data['email']
+    assert content['tokens']
+    assert content['options']['limit'] == 10
+
+
+def test_login_with_unregistered_shop(collection):
+    url = '/v1/api/shops/login'
+    data = {
+        'email': 'unregistered_shop@example.com',
+        'password': '123456'
+    }
+    headers = {'X-API-Key': 'fake_key'}
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.EMAIL_ERROR.value
+
+
+@pytest.mark.asyncio
+def test_login_with_incorrect_password(collection):
+    password = '123456'
+    hashed_password = asyncio.run(Hash.hash_password(password)).decode('utf-8')
+    collection.insert_one({
+        'name': 'created shop',
+        'email': 'created_shop@example.com',
+        'password': hashed_password,
+    })
+
+    url = '/v1/api/shops/login'
+    data = {
+        'email': 'created_shop@example.com',
+        'password': 'wrong password'
+    }
+    headers = {'X-API-Key': 'fake_key'}
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.UNAUTHORIZED.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.UNAUTHORIZED.value

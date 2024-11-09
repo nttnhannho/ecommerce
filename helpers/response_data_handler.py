@@ -4,6 +4,6 @@ class ResponseDataHandler:
         data = {}
 
         for field in fields:
-            data.update({field: obj[field]})
+            data.update({field: obj[field] if field != '_id' else str(obj[field])})
 
         return data

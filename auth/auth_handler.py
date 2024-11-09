@@ -7,7 +7,7 @@ from exceptions.exception import AuthHandlerCreateTokenPairException
 
 class AuthHandler:
     @staticmethod
-    async def create_token_pair(payload, public_key, private_key):
+    async def create_token_pair(payload, private_key, public_key):
         payload_copy = payload.copy()
 
         access_expire = datetime.utcnow() + timedelta(days=2)
@@ -20,7 +20,7 @@ class AuthHandler:
 
         try:
             # decode = jwt.decode(access_token, key=public_key, algorithms=['RS256'])  # For high level design
-            jwt.decode(access_token, options={'verify_signature': False})
+            jwt.decode(access_token, options={'verify_signature': False})  # For low level design
         except Exception:
             raise AuthHandlerCreateTokenPairException
 
@@ -29,5 +29,5 @@ class AuthHandler:
     @staticmethod
     async def __create_token(payload, key):
         # token = jwt.encode(payload=payload, key=key, algorithm='RS256')  # For high level design
-        token = jwt.encode(payload=payload, key=key)
+        token = jwt.encode(payload=payload, key=key)  # For low level design
         return token
