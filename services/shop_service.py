@@ -7,7 +7,11 @@ from core.error_response import (
     UnauthorizedException,
     ReasonStatusCode as ErrorReasonStatusCode,
 )
-from core.success_response import CreatedResponse, ReasonStatusCode as SuccessReasonStatusCode, SuccessResponse
+from core.success_response import (
+    CreatedResponse,
+    ReasonStatusCode as SuccessReasonStatusCode,
+    SuccessResponse, NoContentResponse,
+)
 from dbs.mongodb import mongodb
 from helpers.hashing import Hash
 from helpers.key_generator import KeyGenerator
@@ -20,16 +24,32 @@ from services.key_token_service import KeyTokenService
 
 class ShopService:
     @staticmethod
-    async def log_in(request):
-        request = request.model_dump()
-        collection = mongodb[ShopLogin.__collection_name__]
+    async def log_out(request):
+        await KeyTokenService.remove_by_id(request.state.key_token_id)
+        return NoContentResponse()
 
-        found_shop = await ShopService.find_by_email(collection, email=request['email'])
+    @staticmethod
+    async def log_in(request):
+        """
+        1 - check if email is registered
+        2 - check if password is matched
+        3 - create private key, public key
+        4 - create access token, refresh token
+        """
+        request = await request.json()
+        email = request.get('email')
+        password = request.get('password')
+
+        if not (email and password):
+            raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
+
+        collection = mongodb[ShopLogin.__collection_name__]
+        found_shop = await ShopService.find_by_email(collection, email=email
         if not found_shop:
             raise BadRequestException(detail=ErrorReasonStatusCode.EMAIL_ERROR.value)
 
         is_password_matched = await Hash.is_password_matched(
-            password=request['password'],
+            password=password,
             hashed_password=found_shop['password'],
         )
         if not is_password_matched:
@@ -80,18 +100,31 @@ class ShopService:
 
     @staticmethod
     async def sign_up(request):
-        request = request.model_dump()
-        collection = mongodb[Shop.__collection_name__]
+        """
+        1 - check if email is registered
+        2 - hash password
+        3 - create private key and public key
+        4 - create access token and refresh token
+        5 - create API key
+        """
+        request = await request.json()
+        name = request.get('name')
+        email = request.get('email')
+        password = request.get('password')
 
-        existed_shop = await ShopService.find_by_email(collection, email=request['email'])
+        if not (name and email and password):
+            raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
+
+        collection = mongodb[Shop.__collection_name__]
+        existed_shop = await ShopService.find_by_email(collection, email=email)
         if existed_shop:
             raise BadRequestException(detail=ErrorReasonStatusCode.EMAIL_ERROR.value)
 
-        hashed_password = await Hash.hash_password(password=request['password'])
+        hashed_password = await Hash.hash_password(password=password)
         roles = [ShopRole.SHOP]
         shop_data = {
-            'name': request['name'],
-            'email': request['email'],
+            'name': name,
+            'email': email,
             'password': hashed_password,
             'roles': roles,
         }
@@ -123,7 +156,7 @@ class ShopService:
                 refresh_token=refresh_token,
             )
             if not key_token_dict:
-                return InternalServerError(detail=ErrorReasonStatusCode.INTERNAL_SERVER_ERROR.value)
+                return InternalServerError(detail=ErrorReasonStatusCode.KEY_TOKEN_ERROR.value)
 
             api_key = await KeyGenerator.generate_random_base64(length=64)
             permission = [PermissionCode.P0000.value]

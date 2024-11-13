@@ -7,6 +7,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from auth.auth_handler import Header
 from core.error_response import (
     BadRequestException,
     ForbiddenException,
@@ -24,7 +25,7 @@ app = FastAPI()
 
 
 @app.middleware('http')
-async def check_permission(request: Request, call_next, permission='0000'):
+async def check_permission(request: Request, call_next, permission=Header.DEFAULT_PERMISSION.value):
     api_key_obj = request.state.api_key_obj
     if permission not in api_key_obj['permission']:
         raise PermissionDeniedException(detail=ReasonStatusCode.PERMISSION_DENIED.value)
@@ -35,7 +36,7 @@ async def check_permission(request: Request, call_next, permission='0000'):
 
 @app.middleware('http')
 async def check_api_key(request: Request, call_next):
-    api_key = request.headers.get('X-API-Key')
+    api_key = request.headers.get(Header.API_KEY.value)
     if not api_key:
         raise BadRequestException(detail=ReasonStatusCode.API_KEY_ERROR.value)
 
