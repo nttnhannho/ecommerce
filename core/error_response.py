@@ -9,6 +9,7 @@ class StatusCode(Enum):
     UNAUTHORIZED = 401
     FORBIDDEN = 403
     PERMISSION_DENIED = 403
+    NOT_FOUND = 404
 
 
 class ReasonStatusCode(str, Enum):
@@ -17,10 +18,14 @@ class ReasonStatusCode(str, Enum):
     UNAUTHORIZED = 'UNAUTHORIZED'
     FORBIDDEN = 'FORBIDDEN_ERROR'
     PERMISSION_DENIED = 'PERMISSION_DENIED'
+    NOT_FOUND = 'NOT_FOUND'
 
     EMAIL_ERROR = 'EMAIL_ERROR'
     API_KEY_ERROR = 'API_KEY_ERROR'
     KEY_TOKEN_ERROR = 'KEY_TOKEN_ERROR'
+    CLIENT_ID_ERROR = 'CLIENT_ID_ERROR'
+    AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR'
+    REQUEST_BODY_ERROR = 'REQUEST_BODY_ERROR'
 
 
 class CustomErrorResponse(HTTPException):
@@ -30,6 +35,11 @@ class CustomErrorResponse(HTTPException):
 
 class BadRequestException(CustomErrorResponse):
     def __init__(self, status_code=StatusCode.BAD_REQUEST.value, detail=None):
+        super().__init__(status_code, detail)
+
+
+class NotFoundException(CustomErrorResponse):
+    def __init__(self, status_code=StatusCode.NOT_FOUND.value, detail=None):
         super().__init__(status_code, detail)
 
 
