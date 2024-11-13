@@ -1,11 +1,12 @@
 from enum import Enum
 
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 
 class StatusCode(Enum):
     CREATED = 201
     SUCCESS = 200
+    NO_CONTENT = 204
 
 
 class ReasonStatusCode(str, Enum):
@@ -26,3 +27,8 @@ class CreatedResponse(CustomSuccessResponse):
 class SuccessResponse(CustomSuccessResponse):
     def __init__(self, content, status_code=StatusCode.SUCCESS.value):
         super().__init__(content, status_code)
+
+
+class NoContentResponse(Response):
+    def __init__(self, status_code=StatusCode.NO_CONTENT.value):
+        super().__init__(status_code=status_code)

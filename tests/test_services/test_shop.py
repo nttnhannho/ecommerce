@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 from bson import ObjectId
-from starlette import status
 
+from auth.auth_handler import Header, AuthHandler
 from core.error_response import (
     StatusCode as ErrorStatusCode,
     ReasonStatusCode as ErrorReasonStatusCode,
@@ -11,6 +11,7 @@ from core.error_response import (
 from core.success_response import StatusCode as SuccessStatusCode, ReasonStatusCode as SuccessReasonStatusCode
 from dbs.mongodb import mongodb
 from helpers.hashing import Hash
+from helpers.key_generator import KeyGenerator
 from models.api_key import ApiKey
 from models.key_token_model import KeyToken
 from models.shop_model import Shop
@@ -42,7 +43,7 @@ def test_sign_up(collection):
         'password': '123456',
         'roles': ['SHOP'],
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
@@ -91,7 +92,7 @@ def test_sign_up_with_incorrect_api_key(collection):
         'password': '123456',
         'roles': ['SHOP'],
     }
-    headers = {'X-API-Key': 'incorrect_api_key'}
+    headers = {Header.API_KEY.value: 'incorrect_api_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
@@ -114,7 +115,7 @@ def test_sign_up_with_incorrect_permission(collection):
         'password': '123456',
         'roles': ['SHOP'],
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
@@ -129,11 +130,13 @@ def test_sign_up_with_request_is_missing_email(collection):
         'name': 'Shop A',
         'password': '123456',
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.REQUEST_BODY_ERROR.value
 
 
 def test_signup_with_existed_email_in_database(collection):
@@ -149,7 +152,7 @@ def test_signup_with_existed_email_in_database(collection):
         'email': 'existed@example.com',
         'password': '123456',
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
@@ -158,7 +161,6 @@ def test_signup_with_existed_email_in_database(collection):
     assert content['reason_status_code'] == ErrorReasonStatusCode.EMAIL_ERROR.value
 
 
-@pytest.mark.asyncio
 def test_login(collection):
     password = '123456'
     hashed_password = asyncio.run(Hash.hash_password(password)).decode('utf-8')
@@ -173,7 +175,7 @@ def test_login(collection):
         'email': 'created_shop@example.com',
         'password': '123456'
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
@@ -185,13 +187,27 @@ def test_login(collection):
     assert content['options']['limit'] == 10
 
 
+def test_login_with_request_is_missing_email(collection):
+    url = '/v1/api/shops/login'
+    data = {
+        'password': '123456'
+    }
+    headers = {Header.API_KEY.value: 'fake_key'}
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.REQUEST_BODY_ERROR.value
+
+
 def test_login_with_unregistered_shop(collection):
     url = '/v1/api/shops/login'
     data = {
         'email': 'unregistered_shop@example.com',
         'password': '123456'
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
@@ -200,7 +216,6 @@ def test_login_with_unregistered_shop(collection):
     assert content['reason_status_code'] == ErrorReasonStatusCode.EMAIL_ERROR.value
 
 
-@pytest.mark.asyncio
 def test_login_with_incorrect_password(collection):
     password = '123456'
     hashed_password = asyncio.run(Hash.hash_password(password)).decode('utf-8')
@@ -215,10 +230,98 @@ def test_login_with_incorrect_password(collection):
         'email': 'created_shop@example.com',
         'password': 'wrong password'
     }
-    headers = {'X-API-Key': 'fake_key'}
+    headers = {Header.API_KEY.value: 'fake_key'}
 
     response = test_client.post(url, headers=headers, json=data)
     content = response.json()
 
     assert response.status_code == ErrorStatusCode.UNAUTHORIZED.value
     assert content['reason_status_code'] == ErrorReasonStatusCode.UNAUTHORIZED.value
+
+
+def test_logout(collection):
+    collection.insert_one({
+        'name': 'created shop',
+        'email': 'created_shop@example.com',
+        'password': '123456',
+    })
+
+    shop_obj = collection.find_one({'email': 'created_shop@example.com'})
+    shop_id = str(shop_obj['_id'])
+    shop_email = shop_obj['email']
+    private_key = asyncio.run(KeyGenerator.generate_random_base64(length=64))
+    public_key = asyncio.run(KeyGenerator.generate_random_base64(length=64))
+    payload = {
+        'id': shop_id,
+        'email': shop_email,
+    }
+    access_token, refresh_token = asyncio.run(AuthHandler.create_token_pair(
+        payload=payload,
+        public_key=public_key,
+        private_key=private_key,
+    ))
+
+    key_token = mongodb[KeyToken.__collection_name__]
+    key_token.insert_one({
+        'shop_id': ObjectId(shop_id),
+        'private_key': private_key,
+        'public_key': public_key,
+        'refresh_token': refresh_token,
+    })
+
+    url = '/v1/api/shops/logout'
+    data = {}
+    headers = {
+        Header.API_KEY.value: 'fake_key',
+        Header.CLIENT_ID.value: shop_id,
+        Header.AUTHORIZATION.value: access_token,
+    }
+
+    response = test_client.post(url, headers=headers, json=data)
+
+    assert response.status_code == SuccessStatusCode.NO_CONTENT.value
+
+
+def test_logout_with_request_is_missing_api_key(collection):
+    url = '/v1/api/shops/logout'
+    data = {}
+    headers = {
+        Header.CLIENT_ID.value: 'client_id',
+        Header.AUTHORIZATION.value: 'refresh_token',
+    }
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.API_KEY_ERROR.value
+
+
+def test_logout_with_request_is_missing_client_id(collection):
+    url = '/v1/api/shops/logout'
+    data = {}
+    headers = {
+        Header.API_KEY.value: 'fake_key',
+        Header.AUTHORIZATION.value: 'access_token',
+    }
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.CLIENT_ID_ERROR.value
+
+
+def test_logout_with_request_is_missing_authorization(collection):
+    url = '/v1/api/shops/logout'
+    data = {}
+    headers = {
+        Header.API_KEY.value: 'fake_key',
+        Header.CLIENT_ID.value: 'client_id',
+    }
+
+    response = test_client.post(url, headers=headers, json=data)
+    content = response.json()
+
+    assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
+    assert content['reason_status_code'] == ErrorReasonStatusCode.AUTHENTICATION_ERROR.value
