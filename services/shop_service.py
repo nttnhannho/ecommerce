@@ -44,7 +44,7 @@ class ShopService:
             raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
 
         collection = mongodb[ShopLogin.__collection_name__]
-        found_shop = await ShopService.find_by_email(collection, email=email)
+        found_shop = await ShopService.find_by_email(collection, email=email
         if not found_shop:
             raise BadRequestException(detail=ErrorReasonStatusCode.EMAIL_ERROR.value)
 
