@@ -10,8 +10,7 @@ class Hash:
             byte = password.encode('utf-8')
             salt = bcrypt.gensalt()
             hashed_password = bcrypt.hashpw(byte, salt)
-        except Exception as e:
-            print(e)
+        except Exception:
             raise HashPasswordException
 
         return hashed_password

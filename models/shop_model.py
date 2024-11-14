@@ -41,14 +41,3 @@ class Shop(DatetimeBase):
     @field_validator('email')
     def strip_email(cls, email):
         return strip(email)
-
-
-class ShopLogin(DatetimeBase):
-    __collection_name__ = 'shops'
-
-    email: EmailStr = Field(...)
-    password: str = Field(...)
-
-    @field_validator('email')
-    def strip_email(cls, email):
-        return strip(email)

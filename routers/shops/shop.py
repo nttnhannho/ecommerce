@@ -20,3 +20,8 @@ async def log_in(request: Request):
 @shop_router.post('/logout', dependencies=[Depends(AuthHandler.check_authentication)])
 async def log_out(request: Request):
     return await ShopController.log_out(request)
+
+
+@shop_router.post('/handle-token', dependencies=[Depends(AuthHandler.check_authentication_for_handling_token)])
+async def handle_token(request: Request):
+    return await ShopController.handle_token(request)
