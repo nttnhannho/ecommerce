@@ -13,3 +13,7 @@ class ShopController:
     @staticmethod
     async def log_out(request):
         return await ShopService.log_out(request)
+
+    @staticmethod
+    async def handle_token(request):
+        return await ShopService.handle_token(request)

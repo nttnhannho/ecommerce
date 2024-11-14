@@ -5,7 +5,7 @@ from core.error_response import (
     BadRequestException,
     InternalServerError,
     UnauthorizedException,
-    ReasonStatusCode as ErrorReasonStatusCode,
+    ReasonStatusCode as ErrorReasonStatusCode, ForbiddenException,
 )
 from core.success_response import (
     CreatedResponse,
@@ -13,18 +13,86 @@ from core.success_response import (
     SuccessResponse, NoContentResponse,
 )
 from dbs.mongodb import mongodb
+from exceptions.exception import (
+    ShopServiceFindByEmailException,
+    ShopServiceFindOneException,
+    ShopServiceInsertOneException,
+    ShopServiceRemoveAllException,
+)
 from helpers.hashing import Hash
 from helpers.key_generator import KeyGenerator
 from helpers.response_data_handler import ResponseDataHandler
-from models.api_key import ApiKey, PermissionCode
-from models.shop_model import Shop, ShopRole, ShopLogin
+from models.api_key import PermissionCode
+from models.shop_model import Shop, ShopRole
 from services.api_key_service import ApiKeyService
 from services.key_token_service import KeyTokenService
 
 
 class ShopService:
+    collection = mongodb[Shop.__collection_name__]
+
+    @staticmethod
+    async def handle_token(request):
+        """
+        1 - check if refresh token in refresh token used list
+        2 - check if refresh token is valid
+        3 - check if shop is found by decoded shop email
+        4 - create access token, refresh token
+        5 - update key tokens and response success
+        """
+        decoded_shop = request.state.decoded_shop
+        key_token_obj = request.state.key_token_obj
+        refresh_token = request.state.refresh_token
+
+        id_ = decoded_shop['id']
+        email = decoded_shop['email']
+
+        if refresh_token in key_token_obj['refresh_token_used']:
+            await KeyTokenService.remove_by_shop_id(id_)
+            raise ForbiddenException(detail=ErrorReasonStatusCode.RELOGIN_REQUIRED.value)
+
+        if key_token_obj['refresh_token'] != refresh_token:
+            raise UnauthorizedException(detail=ErrorReasonStatusCode.UNAUTHORIZED.value)
+
+        found_shop = await ShopService.find_by_email(email)
+        if not found_shop:
+            raise UnauthorizedException(detail=ErrorReasonStatusCode.UNAUTHORIZED.value)
+
+        payload = {'id': str(id_), 'email': email}
+        new_access_token, new_refresh_token = await AuthHandler.create_token_pair(
+            payload=payload,
+            private_key=key_token_obj['private_key'],
+            public_key=key_token_obj['public_key'],
+        )
+
+        filter_ = {'_id': ObjectId(key_token_obj['_id'])}
+        update = {
+            '$set': {'refresh_token': new_refresh_token},
+            '$push': {'refresh_token_used': refresh_token}
+        }
+        await KeyTokenService.update_one(filter_, update)
+
+        content = {
+            'message': 'Handled token successfully',
+            'reason_status_code': SuccessReasonStatusCode.SUCCESS.value,
+            'metadata': await ResponseDataHandler.response_data(
+                obj=found_shop,
+                fields=('_id', 'email'),
+            ),
+            'tokens': {
+                'access_token': new_access_token,
+                'refresh_token': new_refresh_token,
+            },
+            'options': {'limit': 10},
+        }
+
+        return SuccessResponse(content=content)
+
     @staticmethod
     async def log_out(request):
+        """
+        remove all key tokens related to logging out shop
+        """
         await KeyTokenService.remove_by_id(request.state.key_token_id)
         return NoContentResponse()
 
@@ -43,8 +111,7 @@ class ShopService:
         if not (email and password):
             raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
 
-        collection = mongodb[ShopLogin.__collection_name__]
-        found_shop = await ShopService.find_by_email(collection, email=email)
+        found_shop = await ShopService.find_by_email(email=email)
         if not found_shop:
             raise BadRequestException(detail=ErrorReasonStatusCode.EMAIL_ERROR.value)
 
@@ -60,10 +127,7 @@ class ShopService:
         public_key = await KeyGenerator.generate_random_base64(length=64)
 
         shop_id = found_shop['_id']
-        payload = {
-            'id': str(shop_id),
-            'email': found_shop['email'],
-        }
+        payload = {'id': str(shop_id), 'email': found_shop['email']}
         access_token, refresh_token = await AuthHandler.create_token_pair(
             payload=payload,
             private_key=private_key,
@@ -94,11 +158,6 @@ class ShopService:
         return SuccessResponse(content=content)
 
     @staticmethod
-    async def find_by_email(collection, email):
-        shop_obj = collection.find_one({'email': email})
-        return shop_obj
-
-    @staticmethod
     async def sign_up(request):
         """
         1 - check if email is registered
@@ -115,8 +174,7 @@ class ShopService:
         if not (name and email and password):
             raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
 
-        collection = mongodb[Shop.__collection_name__]
-        existed_shop = await ShopService.find_by_email(collection, email=email)
+        existed_shop = await ShopService.find_by_email(email=email)
         if existed_shop:
             raise BadRequestException(detail=ErrorReasonStatusCode.EMAIL_ERROR.value)
 
@@ -164,12 +222,11 @@ class ShopService:
 
             # Insert shop to DB
             new_shop_dict = new_shop.model_dump(by_alias=True)
-            collection.insert_one(new_shop_dict)
+            await ShopService.insert_one(new_shop_dict)
 
             # Insert API key to DB
             api_key_dict = api_key_obj.model_dump(by_alias=True)
-            collection = mongodb[ApiKey.__collection_name__]
-            collection.insert_one(api_key_dict)
+            await ApiKeyService.insert_one(api_key_dict)
 
             content = {
                 'message': 'Created new shop',
@@ -186,3 +243,35 @@ class ShopService:
             }
 
             return CreatedResponse(content=content)
+
+    @staticmethod
+    async def find_by_email(email):
+        try:
+            shop_obj = ShopService.collection.find_one({'email': email})
+        except Exception:
+            raise ShopServiceFindByEmailException
+
+        return shop_obj
+
+    @staticmethod
+    async def find_one(data):
+        try:
+            shop_obj = ShopService.collection.find_one(data)
+        except Exception:
+            raise ShopServiceFindOneException
+
+        return shop_obj
+
+    @staticmethod
+    async def insert_one(shop):
+        try:
+            ShopService.collection.insert_one(shop)
+        except Exception:
+            raise ShopServiceInsertOneException
+
+    @staticmethod
+    async def remove_all():
+        try:
+            ShopService.collection.delete_many({})
+        except Exception:
+            raise ShopServiceRemoveAllException
