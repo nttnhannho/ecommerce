@@ -13,7 +13,7 @@ from core.success_response import (
     SuccessResponse, NoContentResponse,
 )
 from dbs.mongodb import mongodb
-from exceptions.exception import (
+from exceptions.shops.exception import (
     ShopServiceFindByEmailException,
     ShopServiceFindOneException,
     ShopServiceInsertOneException,
@@ -22,7 +22,7 @@ from exceptions.exception import (
 from helpers.hashing import Hash
 from helpers.key_generator import KeyGenerator
 from helpers.response_data_handler import ResponseDataHandler
-from models.api_key import PermissionCode
+from models.api_key_model import PermissionCode
 from models.shop_model import Shop, ShopRole
 from services.api_key_service import ApiKeyService
 from services.key_token_service import KeyTokenService
@@ -76,7 +76,7 @@ class ShopService:
             'message': 'Handled token successfully',
             'reason_status_code': SuccessReasonStatusCode.SUCCESS.value,
             'metadata': await ResponseDataHandler.response_data(
-                obj=found_shop,
+                obj_dict=found_shop,
                 fields=('_id', 'email'),
             ),
             'tokens': {
@@ -104,9 +104,9 @@ class ShopService:
         3 - create private key, public key
         4 - create access token, refresh token
         """
-        request = await request.json()
-        email = request.get('email')
-        password = request.get('password')
+        payload = await request.json()
+        email = payload.get('email')
+        password = payload.get('password')
 
         if not (email and password):
             raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
@@ -145,7 +145,7 @@ class ShopService:
             'message': 'Login successfully',
             'reason_status_code': SuccessReasonStatusCode.SUCCESS.value,
             'metadata': await ResponseDataHandler.response_data(
-                obj=found_shop,
+                obj_dict=found_shop,
                 fields=('_id', 'email'),
             ),
             'tokens': {
@@ -166,10 +166,10 @@ class ShopService:
         4 - create access token and refresh token
         5 - create API key
         """
-        request = await request.json()
-        name = request.get('name')
-        email = request.get('email')
-        password = request.get('password')
+        payload = await request.json()
+        name = payload.get('name')
+        email = payload.get('email')
+        password = payload.get('password')
 
         if not (name and email and password):
             raise BadRequestException(detail=ErrorReasonStatusCode.REQUEST_BODY_ERROR.value)
@@ -232,7 +232,7 @@ class ShopService:
                 'message': 'Created new shop',
                 'reason_status_code': SuccessReasonStatusCode.CREATED.value,
                 'metadata': await ResponseDataHandler.response_data(
-                    obj=new_shop_dict,
+                    obj_dict=new_shop_dict,
                     fields=('_id', 'name', 'email'),
                 ),
                 'tokens': {

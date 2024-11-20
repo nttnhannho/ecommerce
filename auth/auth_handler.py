@@ -5,7 +5,7 @@ import jwt
 from starlette.requests import Request
 
 from core.error_response import ReasonStatusCode, NotFoundException, BadRequestException, UnauthorizedException
-from exceptions.exception import AuthHandlerCreateTokenPairException
+from exceptions.misc import AuthHandlerCreateTokenPairException
 from services.key_token_service import KeyTokenService
 
 
@@ -72,6 +72,7 @@ class AuthHandler:
         if str(decoded_shop['id']) != shop_id:
             raise UnauthorizedException(detail=ReasonStatusCode.AUTHENTICATION_ERROR.value)
 
+        request.state.decoded_shop = decoded_shop
         request.state.key_token_id = key_tokens_obj['_id']
 
     @staticmethod

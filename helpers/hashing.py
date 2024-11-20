@@ -1,6 +1,6 @@
 import bcrypt
 
-from exceptions.exception import HashPasswordException, HashCheckMatchedException
+from exceptions.misc import HashPasswordException, HashCheckMatchedException
 
 
 class Hash:

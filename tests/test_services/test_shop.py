@@ -9,11 +9,8 @@ from core.error_response import (
     ReasonStatusCode as ErrorReasonStatusCode,
 )
 from core.success_response import StatusCode as SuccessStatusCode, ReasonStatusCode as SuccessReasonStatusCode
-from dbs.mongodb import mongodb
 from helpers.hashing import Hash
 from helpers.key_generator import KeyGenerator
-from models.api_key import ApiKey
-from models.key_token_model import KeyToken
 from services.api_key_service import ApiKeyService
 from services.key_token_service import KeyTokenService
 from services.shop_service import ShopService
@@ -22,6 +19,9 @@ from tests.test_setup import test_client
 
 @pytest.fixture
 def setup_and_tear_down():
+    asyncio.run(ShopService.remove_all())
+    asyncio.run(KeyTokenService.remove_all())
+    asyncio.run(ApiKeyService.remove_all())
     asyncio.run(ApiKeyService.insert_one({'key': 'fake_key', 'permission': ['0000']}))
 
     yield None
@@ -53,13 +53,11 @@ def test_sign_up(setup_and_tear_down):
     assert content['reason_status_code'] == SuccessReasonStatusCode.CREATED.value
     assert content['options']['limit'] == 10
 
-    key_token = mongodb[KeyToken.__collection_name__]
-    key_token_obj = key_token.find_one({'shop_id': ObjectId(shop_id)})
+    key_token_obj = asyncio.run(KeyTokenService.find_one({'shop_id': ObjectId(shop_id)}))
     assert key_token_obj['private_key']
     assert key_token_obj['public_key']
 
-    api_key = mongodb[ApiKey.__collection_name__]
-    count = api_key.count_documents({})
+    count = asyncio.run(ApiKeyService.count_documents())
     assert count == 2
 
 
@@ -256,14 +254,13 @@ def test_logout(setup_and_tear_down):
         private_key=private_key,
     ))
 
-    key_token = mongodb[KeyToken.__collection_name__]
-    key_token.insert_one({
+    asyncio.run(KeyTokenService.insert_one({
         'shop_id': ObjectId(shop_id),
         'private_key': private_key,
         'public_key': public_key,
         'refresh_token': refresh_token,
         'refresh_token_used': [],
-    })
+    }))
 
     url = '/v1/api/shops/logout'
     data = {}
@@ -345,14 +342,13 @@ def test_handle_token(setup_and_tear_down):
         private_key=private_key,
     ))
 
-    key_token = mongodb[KeyToken.__collection_name__]
-    key_token.insert_one({
+    asyncio.run(KeyTokenService.insert_one({
         'shop_id': ObjectId(shop_id),
         'private_key': private_key,
         'public_key': public_key,
         'refresh_token': refresh_token,
         'refresh_token_used': [],
-    })
+    }))
 
     url = '/v1/api/shops/handle-token'
     data = {}
@@ -370,7 +366,7 @@ def test_handle_token(setup_and_tear_down):
     assert content['metadata']['email'] == shop_email
     assert content['tokens']['access_token'] != access_token
     assert content['tokens']['refresh_token'] != refresh_token
-    assert key_token.find_one({'refresh_token_used': {'$size': 1}})
+    assert KeyTokenService.find_one({'refresh_token_used': {'$size': 1}})
     assert content['options']['limit'] == 10
 
 
