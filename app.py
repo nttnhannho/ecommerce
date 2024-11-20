@@ -67,7 +67,13 @@ class MiddlewareExceptionHandler(BaseHTTPMiddleware):
 
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=origins)
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
 app.add_middleware(GZipMiddleware, minimum_size=minimum_size_in_byte, compresslevel=compression_level)
 app.add_middleware(MiddlewareExceptionHandler)
 
