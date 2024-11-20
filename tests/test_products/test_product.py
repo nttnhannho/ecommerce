@@ -149,4 +149,3 @@ def test_create_product_with_incorrect_product_type(setup_and_tear_down):
 
     assert response.status_code == ErrorStatusCode.BAD_REQUEST.value
     assert content['reason_status_code'] == ErrorReasonStatusCode.PRODUCT_TYPE_ERROR.value
-
