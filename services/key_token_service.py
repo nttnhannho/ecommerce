@@ -27,7 +27,12 @@ class KeyTokenService:
     async def create_key_token(shop_id, private_key, public_key, refresh_token):
         try:
             # For low level design
-            # key_token_obj = KeyToken(shop_id=shop_id, private_key=private_key, public_key=public_key, refresh_token=refresh_token)
+            # key_token_obj = KeyToken(
+            #     shop_id=shop_id,
+            #     private_key=private_key,
+            #     public_key=public_key,
+            #     refresh_token=refresh_token,
+            # )
 
             # For high level design
             filter_ = {'shop_id': shop_id}
@@ -40,9 +45,19 @@ class KeyTokenService:
                     'updated_at': datetime.utcnow(),
                 }
             }
-            key_token_obj = await KeyTokenService.find_one_and_update(filter_, update, upsert=False, return_document=ReturnDocument.AFTER)
+            key_token_obj = await KeyTokenService.find_one_and_update(
+                filter_,
+                update,
+                upsert=False,
+                return_document=ReturnDocument.AFTER,
+            )
             if not key_token_obj:
-                key_token_obj = KeyToken(shop_id=shop_id, private_key=private_key, public_key=public_key, refresh_token=refresh_token)
+                key_token_obj = KeyToken(
+                    shop_id=shop_id,
+                    private_key=private_key,
+                    public_key=public_key,
+                    refresh_token=refresh_token,
+                )
                 key_token_dict = key_token_obj.model_dump(by_alias=True)
                 await KeyTokenService.insert_one(key_token_dict)
         except Exception:
@@ -53,7 +68,12 @@ class KeyTokenService:
     @staticmethod
     async def find_one_and_update(filter_, update, upsert, return_document):
         try:
-            key_token_obj = KeyTokenService.collection.find_one_and_update(filter=filter_, update=update, upsert=upsert, return_document=return_document)
+            key_token_obj = KeyTokenService.collection.find_one_and_update(
+                filter=filter_,
+                update=update,
+                upsert=upsert,
+                return_document=return_document,
+            )
         except Exception:
             raise KeyTokenServiceFindOneAndUpdateException
 
