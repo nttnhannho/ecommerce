@@ -3,7 +3,7 @@ from enum import Enum
 import bson
 from pydantic import EmailStr, Field, field_validator
 
-from helpers.field_validator import strip
+from helpers.model_field_handler import strip
 from models.datetime_base import DatetimeBase
 from models.py_object_id import PyObjectId
 
