@@ -1,12 +1,13 @@
 from dbs.mongodb import mongodb
-from exceptions.exception import (
+from exceptions.api_keys.exception import (
     ApiKeyServiceCreateApiKeyException,
     ApiKeyServiceRemoveAllException,
     ApiKeyServiceUpdateOneException,
     ApiKeyServiceInsertOneException,
     ApiKeyServiceFindByKeyException,
+    ApiKeyServiceCountDocumentException,
 )
-from models.api_key import ApiKey
+from models.api_key_model import ApiKey
 
 
 class ApiKeyService:
@@ -20,6 +21,15 @@ class ApiKeyService:
             raise ApiKeyServiceCreateApiKeyException
 
         return api_key
+
+    @staticmethod
+    async def count_documents():
+        try:
+            count = ApiKeyService.collection.count_documents({})
+        except Exception:
+            raise ApiKeyServiceCountDocumentException
+
+        return count
 
     @staticmethod
     async def find_by_key(key):

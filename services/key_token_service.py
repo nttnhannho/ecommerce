@@ -4,7 +4,7 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 
 from dbs.mongodb import mongodb
-from exceptions.exception import (
+from exceptions.key_tokens.exception import (
     KeyTokenServiceCreateKeyTokenException,
     KeyTokenServiceFindOneAndUpdateException,
     KeyTokenServiceInsertOneException,
@@ -15,6 +15,7 @@ from exceptions.exception import (
     KeyTokenServiceFindByRefreshTokenException,
     KeyTokenServiceRemoveAllException,
     KeyTokenServiceUpdateOneException,
+    KeyTokenServiceFindOneException,
 )
 from models.key_token_model import KeyToken
 
@@ -123,3 +124,12 @@ class KeyTokenService:
             KeyTokenService.collection.update_one(filter_, update)
         except Exception:
             raise KeyTokenServiceUpdateOneException
+
+    @staticmethod
+    async def find_one(data):
+        try:
+            result = KeyTokenService.collection.find_one(data)
+        except Exception:
+            raise KeyTokenServiceFindOneException
+
+        return result
